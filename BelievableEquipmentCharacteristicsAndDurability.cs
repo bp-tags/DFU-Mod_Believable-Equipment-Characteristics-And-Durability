@@ -2,8 +2,9 @@
 // Copyright:       Copyright (C) 2020 Kirk.O
 // License:         MIT License (http://www.opensource.org/licenses/mit-license.php)
 // Author:          Kirk.O
+// Version:			v.1.10
 // Created On: 	    3/8/2020, 5:15 PM
-// Last Edit:		3/16/2020, 10:00 AM
+// Last Edit:		3/26/2020, 1:15 AM
 // Modifier:		
 
 using DaggerfallConnect;
@@ -54,29 +55,71 @@ namespace BelievableEquipmentCharacteristicsAndDurability
 		#region Equipment Durability Damage Formulas
 		
         /// Allocate any equipment damage from a strike, and reduce item condition.
-        private static bool DamageEquipment(DaggerfallEntity attacker, DaggerfallEntity target, int damage, DaggerfallUnityItem weapon, int struckBodyPart)
+		private static bool DamageEquipment(DaggerfallEntity attacker, DaggerfallEntity target, int damage, DaggerfallUnityItem weapon, int struckBodyPart)
         {
-			int atkStrength = attacker.Stats.LiveStrength * 100;
+			int atkStrength = attacker.Stats.LiveStrength;
 			int tarMatMod = 0;
 			int matDifference = 0;
 			bool bluntWep = false;
+			bool shtbladeWep = false;
+			bool missileWep = false;
+			int wepEqualize = 1;
 			int wepWeight = 1;
+			float wepDamResist = 1f;
+			float armorDamResist = 1f;
 			
             // If damage was done by a weapon, damage the weapon and armor of the hit body part.
             if (weapon != null && damage > 0)
-			{				
+			{
+				int atkMatMod = weapon.GetWeaponMaterialModifier() + 2;
+				int wepDam = damage;
+				wepEqualize = EqualizeMaterialConditions(weapon);
+				wepDam *= wepEqualize;
+		
 				if (weapon.GetWeaponSkillIDAsShort() == 32) // Checks if the weapon being used is in the Blunt Weapon category, then sets a bool value to true.
 				{
+					wepDam += (atkStrength / 10);
+					wepDamResist = (wepEqualize*.20f) + 1;
+					wepDam = (int)Mathf.Ceil(wepDam/wepDamResist);
 					bluntWep = true;
 					wepWeight = (int)Mathf.Ceil(weapon.EffectiveUnitWeightInKg());
+					
+					ApplyConditionDamageThroughWeaponDamage(weapon, attacker, wepDam, bluntWep, shtbladeWep, missileWep, wepEqualize); // Does condition damage to the attackers weapon.
 				}
-				
-				int wepEqualize = EqualizeMaterialConditions(weapon, damage);
-				int atkMatMod = weapon.GetWeaponMaterialModifier() + 2;
-				int wepDam = wepEqualize + (atkStrength / 20);
-				
-				ApplyConditionDamageThroughWeaponDamage(weapon, attacker, wepDam); // Does condition damage to the attackers weapon.
-				
+				else if (weapon.GetWeaponSkillIDAsShort() == 28) // Checks if the weapon being used is in the Short Blade category, then sets a bool value to true.
+				{
+					if (weapon.TemplateIndex == (int)Weapons.Dagger || weapon.TemplateIndex == (int)Weapons.Tanto)
+					{
+						wepDam += (atkStrength / 30);
+						wepDamResist = (wepEqualize*.90f) + 1;
+						wepDam = (int)Mathf.Ceil(wepDam/wepDamResist);
+						shtbladeWep = true;
+					}
+					else
+					{
+						wepDam += (atkStrength / 30);
+						wepDamResist = (wepEqualize*.30f) + 1;
+						wepDam = (int)Mathf.Ceil(wepDam/wepDamResist);
+						shtbladeWep = true;
+					}
+					
+					ApplyConditionDamageThroughWeaponDamage(weapon, attacker, wepDam, bluntWep, shtbladeWep, missileWep, wepEqualize); // Does condition damage to the attackers weapon.
+				}
+				else if (weapon.GetWeaponSkillIDAsShort() == 33) // Checks if the weapon being used is in the Missile Weapon category, then sets a bool value to true.
+				{
+					missileWep = true;
+					
+					ApplyConditionDamageThroughWeaponDamage(weapon, attacker, wepDam, bluntWep, shtbladeWep, missileWep, wepEqualize); // Does condition damage to the attackers weapon.
+				}
+				else // If all other weapons categories have not been found, it defaults to this, which currently includes long blades and axes.
+				{
+					wepDam += (atkStrength / 10);
+					wepDamResist = (wepEqualize*.20f) + 1;
+					wepDam = (int)Mathf.Ceil(wepDam/wepDamResist);
+					
+					ApplyConditionDamageThroughWeaponDamage(weapon, attacker, wepDam, bluntWep, shtbladeWep, missileWep, wepEqualize); // Does condition damage to the attackers weapon.
+				}
+
 				if (attacker == GameManager.Instance.PlayerEntity)
 					WarningMessagePlayerEquipmentCondition(weapon);
 				
@@ -95,12 +138,13 @@ namespace BelievableEquipmentCharacteristicsAndDurability
 
 				if (shieldTakesDamage)
 				{
-					damage = EqualizeMaterialConditions(shield, damage);
+					int shieldEqualize = EqualizeMaterialConditions(shield);
+					damage *= shieldEqualize;
 					tarMatMod = ArmorMaterialModifierFinder(shield);
 					matDifference = tarMatMod - atkMatMod;
 					damage = MaterialDifferenceDamageCalculation(shield, matDifference, atkStrength, damage, bluntWep, wepWeight, shieldTakesDamage);
 					
-					ApplyConditionDamageThroughWeaponDamage(shield, target, damage);
+					ApplyConditionDamageThroughWeaponDamage(shield, target, damage, bluntWep, shtbladeWep, missileWep, wepEqualize);
 					
 					if (target == GameManager.Instance.PlayerEntity)
 						WarningMessagePlayerEquipmentCondition(shield);
@@ -111,12 +155,13 @@ namespace BelievableEquipmentCharacteristicsAndDurability
 					DaggerfallUnityItem armor = target.ItemEquipTable.GetItem(hitSlot);
 					if (armor != null)
 					{
-						damage = EqualizeMaterialConditions(armor, damage);
+						int armorEqualize = EqualizeMaterialConditions(armor);
+						damage *= armorEqualize;
 						tarMatMod = ArmorMaterialModifierFinder(armor);
 						matDifference = tarMatMod - atkMatMod;
 						damage = MaterialDifferenceDamageCalculation(armor, matDifference, atkStrength, damage, bluntWep, wepWeight, shieldTakesDamage);
 						
-						ApplyConditionDamageThroughWeaponDamage(armor, target, damage);
+						ApplyConditionDamageThroughWeaponDamage(armor, target, damage, bluntWep, shtbladeWep, missileWep, wepEqualize);
 						
 						if (target == GameManager.Instance.PlayerEntity)
 							WarningMessagePlayerEquipmentCondition(armor);
@@ -141,10 +186,12 @@ namespace BelievableEquipmentCharacteristicsAndDurability
 
 				if (shieldTakesDamage)
 				{
-					damage = EqualizeMaterialConditions(shield, damage);
+					int shieldEqualize = EqualizeMaterialConditions(shield);
+					damage *= shieldEqualize;
 					tarMatMod = ArmorMaterialModifierFinder(shield);
 					atkStrength /= 5;
-					damage = (damage / tarMatMod) + atkStrength;
+					armorDamResist = (tarMatMod*.35f) + 1;
+					damage = (int)Mathf.Ceil((damage + atkStrength)/armorDamResist);
 					
 					ApplyConditionDamageThroughUnarmedDamage(shield, target, damage);
 					
@@ -157,10 +204,12 @@ namespace BelievableEquipmentCharacteristicsAndDurability
 					DaggerfallUnityItem armor = target.ItemEquipTable.GetItem(hitSlot);
 					if (armor != null)
 					{
-						damage = EqualizeMaterialConditions(armor, damage);
+						int armorEqualize = EqualizeMaterialConditions(armor);
+						damage *= armorEqualize;
 						tarMatMod = ArmorMaterialModifierFinder(armor);
 						atkStrength /= 5;
-						damage = (damage / tarMatMod) + atkStrength;
+						armorDamResist = (tarMatMod*.20f) + 1;
+						damage = (int)Mathf.Ceil((damage + atkStrength)/armorDamResist);
 						
 						ApplyConditionDamageThroughUnarmedDamage(armor, target, damage);
 						
@@ -270,18 +319,16 @@ namespace BelievableEquipmentCharacteristicsAndDurability
 					return damage;
 				}
 			}
-			return damage;
 		}
 		
         /// Applies condition damage to an item based on physical hit damage.
-        private static void ApplyConditionDamageThroughWeaponDamage(DaggerfallUnityItem item, DaggerfallEntity owner, int damage) // Possibly add on so that magic damage also damages worn equipment.
+        private static void ApplyConditionDamageThroughWeaponDamage(DaggerfallUnityItem item, DaggerfallEntity owner, int damage, bool bluntWep, bool shtbladeWep, bool missileWep, int wepEqualize) // Possibly add on so that magic damage also damages worn equipment.
         {
 			//Debug.LogFormat("Item Group Index is {0}", item.GroupIndex);
 			//Debug.LogFormat("Item Template Index is {0}", item.TemplateIndex);
 			
 			if (item.ItemGroup == ItemGroups.Armor) // Target gets their armor/shield condition damaged.
             {
-				damage /= 100;
                 int amount = item.IsShield ? damage * 2: damage * 4;
                 item.LowerCondition(amount, owner);
 				
@@ -292,10 +339,12 @@ namespace BelievableEquipmentCharacteristicsAndDurability
             }
 			else // Attacker gets their weapon damaged, if they are using one, otherwise this method is not called.
 			{
-				damage /= 100;
 				int amount = (10 * damage) / 50;
-				if ((amount == 0) && Dice100.SuccessRoll(40)) // Likely will want to increase this somehow without completely gimping lower durability weapons.
+				if ((amount == 0) && Dice100.SuccessRoll(40))
 					amount = 1;
+					
+				if (missileWep)
+					amount = SpecificWeaponConditionDamage(item, amount, wepEqualize);
 
 				item.LowerCondition(amount, owner);
 				
@@ -363,77 +412,76 @@ namespace BelievableEquipmentCharacteristicsAndDurability
 					damagedItemMessage = String.Format("My {0} Is Falling Apart", item.shortName);
 				}
 				
-				if (item.ConditionPercentage <= 49 && item.ConditionPercentage >= 45) // 49 & 45 // This will work for now, until I find a more elegant solution.
+				if (item.ConditionPercentage <= 49 && item.ConditionPercentage >= 47) // This will work for now, until I find a more elegant solution.
 					DaggerfallUI.AddHUDText(roughItemMessage, 2.00f); // Possibly make a random between a few of these lines to mix it up or something.				
-				else if (item.ConditionPercentage <= 16 && item.ConditionPercentage >= 12) // 16 & 12
+				else if (item.ConditionPercentage <= 16 && item.ConditionPercentage >= 14)
 					DaggerfallUI.AddHUDText(damagedItemMessage, 2.00f);
 			}
 		}
 		
-		// Multiplies damage amount based on the condition modifier of a material, the idea being that items will take around the same amount of damage as other items in that category. The thing that will increase the durability in the end is having the number reduced later on by the material modifier, if applicable.
-		private static int EqualizeMaterialConditions (DaggerfallUnityItem item, int damage)
+		// Retrieves the multiplier based on the condition modifier of a material, the idea being that items will take around the same amount of damage as other items in that category. The thing that will increase the durability in the end is having the number reduced later on by the material modifier, if applicable.
+		private static int EqualizeMaterialConditions (DaggerfallUnityItem item)
 		{
 			int itemMat = item.NativeMaterialValue;
-			damage *= 100;
 			
 			if (itemMat <= 9 && itemMat >= 0) // Checks if the item material is for weapons, and leather armor.
 			{
 				if (itemMat == (int)ArmorMaterialTypes.Leather)
-					return damage;
+					return 1;
 				else if (itemMat == (int)WeaponMaterialTypes.Iron)
-					return damage;
+					return 1;
 				else if (itemMat == (int)WeaponMaterialTypes.Steel)
-					return damage;
+					return 1;
 				else if (itemMat == (int)WeaponMaterialTypes.Silver)
-					return damage;
+					return 1;
 				else if (itemMat == (int)WeaponMaterialTypes.Elven)
-					return damage * 2;
+					return 2;
 				else if (itemMat == (int)WeaponMaterialTypes.Dwarven)
-					return damage * 3;
+					return 3;
 				else if (itemMat == (int)WeaponMaterialTypes.Mithril)
-					return damage * 4;
+					return 4;
 				else if (itemMat == (int)WeaponMaterialTypes.Adamantium)
-					return damage * 5;
+					return 5;
 				else if (itemMat == (int)WeaponMaterialTypes.Ebony)
-					return damage * 6;
+					return 6;
 				else if (itemMat == (int)WeaponMaterialTypes.Orcish)
-					return damage * 7;
+					return 7;
 				else if (itemMat == (int)WeaponMaterialTypes.Daedric)
-					return damage * 8;
+					return 8;
 				else
-					return damage;
+					return 1;
 			}
 			else if (itemMat <= 521 && itemMat >= 256) // Checks if the item material is for armors.
 			{
 				if (itemMat == (int)ArmorMaterialTypes.Chain)
-					return damage;
+					return 1;
 				else if (itemMat == (int)ArmorMaterialTypes.Chain2)
-					return damage;
+					return 1;
 				else if (itemMat == (int)ArmorMaterialTypes.Iron)
-					return damage;
+					return 1;
 				else if (itemMat == (int)ArmorMaterialTypes.Steel)
-					return damage;
+					return 1;
 				else if (itemMat == (int)ArmorMaterialTypes.Silver)
-					return damage;
+					return 1;
 				else if (itemMat == (int)ArmorMaterialTypes.Elven)
-					return damage * 2;
+					return 2;
 				else if (itemMat == (int)ArmorMaterialTypes.Dwarven)
-					return damage * 3;
+					return 3;
 				else if (itemMat == (int)ArmorMaterialTypes.Mithril)
-					return damage * 4;
+					return 4;
 				else if (itemMat == (int)ArmorMaterialTypes.Adamantium)
-					return damage * 5;
+					return 5;
 				else if (itemMat == (int)ArmorMaterialTypes.Ebony)
-					return damage * 6;
+					return 6;
 				else if (itemMat == (int)ArmorMaterialTypes.Orcish)
-					return damage * 7;
+					return 7;
 				else if (itemMat == (int)ArmorMaterialTypes.Daedric)
-					return damage * 8;
+					return 8;
 				else
-					return damage;
+					return 1;
 			}
 			else
-				return damage;
+				return 1;
 		}
 		
 		// Finds the material that an armor item is made from, then returns the multiplier that will be used later based on this material check.
@@ -469,6 +517,28 @@ namespace BelievableEquipmentCharacteristicsAndDurability
 				return 8;
 			else
 				return 1;
+		}
+		
+		//For dealing with special cases of specific weapons in terms of condition damage amount.
+		private static int SpecificWeaponConditionDamage(DaggerfallUnityItem weapon, int damageWep, int materialValue)
+		{
+			if (weapon.TemplateIndex == (int)Weapons.Long_Bow)
+			{
+				if (materialValue == 1) // iron, steel, silver
+					damageWep = 1;
+				else if (materialValue == 2) // elven
+					damageWep = 2;
+				else // dwarven, mithril, adamantium, ebony, orcish, daedric 
+					damageWep = 3; 
+			}
+			else if (weapon.TemplateIndex == (int)Weapons.Short_Bow)
+			{
+				if (materialValue == 1) // iron, steel, silver
+					damageWep = 1;
+				else // elven, dwarven, mithril, adamantium, ebony, orcish, daedric
+					damageWep = 2;
+			}
+			return damageWep;
 		}
 		
 		#endregion

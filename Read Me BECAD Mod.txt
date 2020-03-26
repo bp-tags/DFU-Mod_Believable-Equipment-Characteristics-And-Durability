@@ -1,10 +1,15 @@
 Name: Believable Equipment Characteristics And Durability
 Author: Kirk.O
 Released On: Version 1.00, Released on 3/16/2020, 5:30 PM
-Version: 1.00
+Version: 1.10
 
 DESCRIPTION
 Changes how equipment durability is damaged, and how much damage equipment takes based on what material and weapon type is being used to deal said damage.
+
+UPDATES:
+
+Version 1.10, 3/26/2020: Fixed some bugs, redid parts of the code for easier modification when needed. Also made it so bows and short-blade weapons last much longer than before.
+
 
 WHAT DOES THIS MOD CHANGE AND WHY?:
 -Overall, increases how much condition damage equipment takes from both dealing damage and taking damage. With the purpose being that more mind will have 
@@ -56,6 +61,8 @@ OPTIONS:
 VERSION HISTORY:
 
 1.00 - Initial Release
+
+1.10 - Bug Fixes, Minor Code Restructuring, and Longer Lasting Bows and Short-blades
 
 
 INSTALLATION:
