@@ -1,0 +1,12 @@
+{
+    "ModTitle": "Believable Equipment Characteristics And Durability",
+    "ModVersion": "1.10",
+    "ModAuthor": "Kirk.O",
+    "ContactInfo": "kirkoliveri@gmail.com",
+    "DFUnity_Version": "0.10.25",
+    "ModDescription": "Changes how equipment durability is damaged, and how much damage equipment takes based on what material and weapon type is being used to deal said damage.",
+    "GUID": "1007e2f5-9b6d-4412-ae1b-54601b4791bd",
+    "Files": [
+        "Assets/Game/Mods/BelievableEquipmentCharacteristicsAndDurability.cs"
+    ]
+}

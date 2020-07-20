@@ -4,21 +4,15 @@
 // Author:          Kirk.O
 // Version:			v.1.10
 // Created On: 	    3/8/2020, 5:15 PM
-// Last Edit:		3/26/2020, 1:15 AM
+// Last Edit:		7/19/2020, 8:20 PM
 // Modifier:		
 
-using DaggerfallConnect;
-using DaggerfallWorkshop;
 using DaggerfallWorkshop.Game;
 using DaggerfallWorkshop.Game.Formulas;
 using DaggerfallWorkshop.Game.Entity;
 using DaggerfallWorkshop.Game.Items;
 using DaggerfallWorkshop.Game.Utility.ModSupport;
 using DaggerfallWorkshop.Game.Utility;
-using DaggerfallWorkshop.Utility;
-using DaggerfallWorkshop.Game.UserInterfaceWindows;
-using DaggerfallWorkshop.Game.MagicAndEffects;
-using DaggerfallWorkshop.Game.MagicAndEffects.MagicEffects;
 using UnityEngine;
 using System;
 
@@ -487,37 +481,45 @@ namespace BelievableEquipmentCharacteristicsAndDurability
 		// Finds the material that an armor item is made from, then returns the multiplier that will be used later based on this material check.
 		private static int ArmorMaterialModifierFinder (DaggerfallUnityItem armor)
 		{
-			int itemMat = armor.NativeMaterialValue;
-			
-			if (itemMat == (int)ArmorMaterialTypes.Leather)
-				return 1;
-			else if (itemMat == (int)ArmorMaterialTypes.Chain)
-				return 2;
-			else if (itemMat == (int)ArmorMaterialTypes.Chain2)
-				return 2;
-			else if (itemMat == (int)ArmorMaterialTypes.Iron)
-				return 2;
-			else if (itemMat == (int)ArmorMaterialTypes.Steel)
-				return 3;
-			else if (itemMat == (int)ArmorMaterialTypes.Silver)
-				return 3;
-			else if (itemMat == (int)ArmorMaterialTypes.Elven)
-				return 4;
-			else if (itemMat == (int)ArmorMaterialTypes.Dwarven)
-				return 5;
-			else if (itemMat == (int)ArmorMaterialTypes.Mithril)
-				return 5;
-			else if (itemMat == (int)ArmorMaterialTypes.Adamantium)
-				return 5;
-			else if (itemMat == (int)ArmorMaterialTypes.Ebony)
-				return 6;
-			else if (itemMat == (int)ArmorMaterialTypes.Orcish)
-				return 7;
-			else if (itemMat == (int)ArmorMaterialTypes.Daedric)
-				return 8;
-			else
-				return 1;
-		}
+            if (!armor.IsShield)
+            {
+                int itemMat = armor.GetMaterialArmorValue();
+                itemMat /= 2 - (int)0.5;
+                return itemMat;
+            }
+            else
+            {
+                int itemMat = armor.NativeMaterialValue;
+
+                switch (itemMat)
+                {
+                    case (int)ArmorMaterialTypes.Leather:
+                        return 1;
+                    case (int)ArmorMaterialTypes.Chain:
+                    case (int)ArmorMaterialTypes.Chain2:
+                        return 2;
+                    case (int)ArmorMaterialTypes.Iron:
+                        return 3;
+                    case (int)ArmorMaterialTypes.Steel:
+                    case (int)ArmorMaterialTypes.Silver:
+                        return 4;
+                    case (int)ArmorMaterialTypes.Elven:
+                        return 5;
+                    case (int)ArmorMaterialTypes.Dwarven:
+                        return 6;
+                    case (int)ArmorMaterialTypes.Mithril:
+                    case (int)ArmorMaterialTypes.Adamantium:
+                        return 7;
+                    case (int)ArmorMaterialTypes.Ebony:
+                        return 8;
+                    case (int)ArmorMaterialTypes.Orcish:
+                        return 9;
+                    case (int)ArmorMaterialTypes.Daedric:
+                        return 10;
+                }
+            }
+            return 1;
+        }
 		
 		//For dealing with special cases of specific weapons in terms of condition damage amount.
 		private static int SpecificWeaponConditionDamage(DaggerfallUnityItem weapon, int damageWep, int materialValue)
